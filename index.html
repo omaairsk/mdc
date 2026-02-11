@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DIAGNOSTIC CENTRE | Financial & Admin Portal</title>
+    <!-- Core Frameworks -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Supabase JS SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap');
+        
+        :root {
+            --glass: rgba(13, 18, 30, 0.75);
+            --glass-border: rgba(255, 255, 255, 0.08);
+            --primary: #06b6d4; /* Cyan 500 */
+        }
+
+        body { 
+            font-family: 'Inter', sans-serif; 
+            overflow-x: hidden;
+            background-color: #0f172a;
+            color: #e2e8f0;
+            margin: 0;
+            padding: 0;
+            width: 100vw;
+            min-height: 100vh;
+        }
+
+        #canvas-container { 
+            position: fixed; 
+            top: 0; 
+            left: 0; 
+            width: 100%; 
+            height: 100%; 
+            z-index: -1; 
+            pointer-events: none;
+        }
+
+        .glass-panel { 
+            background: var(--glass); 
+            backdrop-filter: blur(20px); 
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border); 
+            border-radius: 1rem;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+            transition: all 0.3s ease;
+        }
+
+        .glass-panel:hover {
+            border-color: rgba(6, 182, 212, 0.3);
+            transform: translateY(-2px);
+            box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.4);
+        }
+
+        .input-field {
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: white;
+            transition: all 0.3s ease;
+        }
+        .input-field:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px rgba(6, 182, 212, 0.2);
+            outline: none;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.25); }
+
+        .center-layout {
+            width: 100%;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        /* Mono font for numbers */
+        .font-mono { font-family: 'JetBrains Mono', monospace; }
+
+        @media print {
+            .no-print { display: none !important; }
+            body { background: white !important; color: black !important; }
+            .glass-panel { border: 1px solid #ccc !important; background: white !important; color: black !important; box-shadow: none !important; backdrop-filter: none !important; }
+            .text-emerald-400, .text-rose-400, .text-sky-400 { color: black !important; }
+        }
+
+        .loader {
+            width: 48px;
+            height: 48px;
+            border: 3px solid #FFF;
+            border-radius: 50%;
+            display: inline-block;
+            position: relative;
+            box-sizing: border-box;
+            animation: rotation 1s linear infinite;
+        }
+        .loader::after {
+            content: '';  
+            box-sizing: border-box;
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: 3px solid transparent;
+            border-bottom-color: var(--primary);
+        }
+        @keyframes rotation { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* Syntax highlighting for SQL block */
+        .sql-block {
+            background: #1e293b;
+            color: #a5b4fc;
+            font-family: 'JetBrains Mono', monospace;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            font-size: 0.8rem;
+            overflow-x: auto;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container"></div>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useMemo, useRef, useCallback } = React;
+
+        // --- Supabase Config (UPDATED WITH NEW CREDENTIALS) ---
+        const SUPABASE_URL = "https://lawvabxmsvakgzucirlw.supabase.co";
+        const SUPABASE_ANON_KEY = "sb_publishable_flu-nGiaQz30VDlruWfpUw_q1Jvj0_D";
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        // --- 3D Background Logic (Diagnostic Theme: Spheres/Molecules) ---
+        const ThreeBackground = () => {
+            useEffect(() => {
+                const container = document.getElementById('canvas-container');
+                if (!container) return;
+
+                const scene = new THREE.Scene();
+                // Fog for depth
+                scene.fog = new THREE.FogExp2(0x0f172a, 0.02);
+
+                const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+                const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+                
+                renderer.setSize(window.innerWidth, window.innerHeight);
+                renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+                container.appendChild(renderer.domElement);
+
+                // Lights
+                const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+                scene.add(ambientLight);
+                const pointLight = new THREE.PointLight(0x06b6d4, 2, 50); // Cyan light
+                pointLight.position.set(10, 10, 10);
+                scene.add(pointLight);
+
+                // Particles (Spheres for "Cells" or "Molecules" look)
+                const group = new THREE.Group();
+                const geometry = new THREE.SphereGeometry(0.2, 16, 16);
+                const material = new THREE.MeshPhysicalMaterial({ 
+                    color: 0x22d3ee, 
+                    transparent: true, 
+                    opacity: 0.6,
+                    roughness: 0.1,
+                    metalness: 0.1
+                });
+
+                for (let i = 0; i < 150; i++) {
+                    const mesh = new THREE.Mesh(geometry, material);
+                    mesh.position.set(
+                        (Math.random() - 0.5) * 40,
+                        (Math.random() - 0.5) * 40,
+                        (Math.random() - 0.5) * 30
+                    );
+                    mesh.scale.setScalar(Math.random() * 2 + 0.5);
+                    group.add(mesh);
+                }
+                scene.add(group);
+
+                camera.position.z = 15;
+
+                // Animation Loop
+                let reqId;
+                const animate = () => {
+                    reqId = requestAnimationFrame(animate);
+                    group.rotation.y += 0.0008;
+                    group.rotation.x += 0.0004;
+                    
+                    // Gentle float
+                    group.children.forEach((child, i) => {
+                        child.position.y += Math.sin(Date.now() * 0.001 + i) * 0.005;
+                    });
+
+                    renderer.render(scene, camera);
+                };
+                animate();
+
+                const handleResize = () => {
+                    camera.aspect = window.innerWidth / window.innerHeight;
+                    camera.updateProjectionMatrix();
+                    renderer.setSize(window.innerWidth, window.innerHeight);
+                };
+                window.addEventListener('resize', handleResize);
+
+                return () => {
+                    cancelAnimationFrame(reqId);
+                    window.removeEventListener('resize', handleResize);
+                    if (container.contains(renderer.domElement)) {
+                        container.removeChild(renderer.domElement);
+                    }
+                    geometry.dispose();
+                    material.dispose();
+                    renderer.dispose();
+                };
+            }, []);
+            return null;
+        };
+
+        const App = () => {
+            const [role, setRole] = useState('staff'); 
+            const [isLoggedIn, setIsLoggedIn] = useState(false);
+            const [activeTab, setActiveTab] = useState('dashboard');
+            const [records, setRecords] = useState([]);
+            const [loading, setLoading] = useState(true);
+            const [dbError, setDbError] = useState(null);
+            const [accessKey, setAccessKey] = useState('');
+            const [isSaving, setIsSaving] = useState(false);
+            const [needsSetup, setNeedsSetup] = useState(false);
+
+            // --- AUTH CREDENTIALS ---
+            const staffPass = 'mdc@1500';
+            const adminPass = 'Fadmin';
+
+            const [formData, setFormData] = useState({
+                date: new Date().toISOString().split('T')[0],
+                sales: '', expense: '', refund: '', dues: '', bankDeposit: ''
+            });
+
+            // --- DATABASE FUNCTIONS ---
+            const fetchRecords = useCallback(async () => {
+                try {
+                    const { data, error } = await supabaseClient
+                        .from('pharmacy_records') 
+                        .select('*');
+                    
+                    if (error) {
+                        // Check specifically for missing table error
+                        // PGRST205: Relation not found in schema cache (common with new tables)
+                        // 42P01: Undefined table
+                        if (error.code === 'PGRST205' || error.code === '42P01' || error.message.includes('Could not find the table')) {
+                            console.warn("Database setup required: Table 'pharmacy_records' not found.");
+                            setNeedsSetup(true);
+                        } else {
+                            throw error;
+                        }
+                    } else {
+                        setDbError(null);
+                        setNeedsSetup(false);
+                        const mapped = (data || []).map(r => ({
+                            id: r.id,
+                            date: String(r.date || ''),
+                            sales: Number(r.sales) || 0,
+                            expense: Number(r.expense) || 0,
+                            refund: Number(r.refund) || 0,
+                            dues: Number(r.dues) || 0,
+                            bankDeposit: Number(r.bank_deposit) || 0,
+                            dayPL: Number(r.day_pl) || 0,
+                            cashHand: Number(r.cash_hand) || 0
+                        })).sort((a, b) => b.date.localeCompare(a.date));
+                        setRecords(mapped);
+                    }
+                } catch (err) {
+                    console.error("Supabase Error:", err);
+                    setDbError(err.message || "Unknown error occurred");
+                } finally {
+                    setLoading(false);
+                }
+            }, []);
+
+            useEffect(() => {
+                fetchRecords();
+                const sub = supabaseClient.channel('realtime_sync').on('postgres_changes', { event: '*', schema: 'public', table: 'pharmacy_records' }, fetchRecords).subscribe();
+                return () => supabaseClient.removeChannel(sub);
+            }, [fetchRecords]);
+
+            useEffect(() => { if (window.lucide) window.lucide.createIcons(); }, [records, isLoggedIn, activeTab, needsSetup]);
+
+            // --- CALCULATIONS ---
+            const stats = useMemo(() => {
+                const s = records.reduce((acc, r) => ({
+                    sales: acc.sales + r.sales,
+                    expense: acc.expense + r.expense,
+                    refund: acc.refund + r.refund,
+                    bankDeposit: acc.bankDeposit + r.bankDeposit,
+                    dues: acc.dues + r.dues,
+                    cashHand: acc.cashHand + r.cashHand
+                }), { sales: 0, expense: 0, refund: 0, bankDeposit: 0, dues: 0, cashHand: 0 });
+                return { ...s, netProfit: s.sales - s.expense - s.refund };
+            }, [records]);
+
+            const monthlySummary = useMemo(() => {
+                const groups = {};
+                records.forEach(r => {
+                    const m = r.date ? r.date.substring(0, 7) : 'NA';
+                    if (!groups[m]) groups[m] = { m, sales: 0, expense: 0, refund: 0, bankDeposit: 0, dues: 0, profit: 0 };
+                    groups[m].sales += r.sales;
+                    groups[m].expense += r.expense;
+                    groups[m].refund += r.refund;
+                    groups[m].bankDeposit += r.bankDeposit;
+                    groups[m].dues += r.dues;
+                    groups[m].profit += (r.sales - r.expense - r.refund);
+                });
+                return Object.values(groups).sort((a, b) => b.m.localeCompare(a.m));
+            }, [records]);
+
+            const downloadCSV = () => {
+                const headers = ["Date", "Lab Revenue", "Lab Expense", "Refund", "Patient Dues", "Bank Deposit", "Cash Hand", "Net P/L"];
+                const rows = records.map(r => [r.date, r.sales, r.expense, r.refund, r.dues, r.bankDeposit, r.cashHand, r.dayPL].join(","));
+                const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows].join("\n");
+                const link = document.createElement("a");
+                link.setAttribute("href", encodeURI(csvContent));
+                link.setAttribute("download", `Diagnostic_Centre_Report.csv`);
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            };
+
+            const addRecord = async (e) => {
+                if (e) e.preventDefault();
+                if (isSaving) return;
+                setIsSaving(true);
+                const s = Number(formData.sales) || 0;
+                const ex = Number(formData.expense) || 0;
+                const rf = Number(formData.refund) || 0;
+                const d = Number(formData.dues) || 0;
+                const b = Number(formData.bankDeposit) || 0;
+
+                const payload = { 
+                    date: String(formData.date), 
+                    sales: s, 
+                    expense: ex, 
+                    refund: rf, 
+                    dues: d, 
+                    bank_deposit: b, 
+                    day_pl: s - ex - rf, 
+                    cash_hand: s - b - d - rf 
+                };
+
+                const { error } = await supabaseClient.from('pharmacy_records').insert([payload]);
+                if (error) {
+                    alert(`Sync Error: ${error.message}`);
+                } else {
+                    setFormData({ date: new Date().toISOString().split('T')[0], sales: '', expense: '', refund: '', dues: '', bankDeposit: '' });
+                    fetchRecords();
+                }
+                setIsSaving(false);
+            };
+
+            const handleDelete = async (id) => {
+                if (role !== 'admin' || !confirm('Permanently delete this entry from the database?')) return;
+                await supabaseClient.from('pharmacy_records').delete().eq('id', id);
+                fetchRecords();
+            };
+
+            const handleLoginAttempt = (e) => {
+                if (e) e.preventDefault();
+                const val = accessKey.trim();
+                if ((role === 'admin' && val === adminPass) || (role === 'staff' && val === staffPass)) {
+                    setIsLoggedIn(true);
+                    setAccessKey('');
+                } else {
+                    alert("Access Denied: Invalid Credentials");
+                }
+            };
+
+            const fmt = (v) => (Number(v) || 0).toLocaleString('en-IN');
+            
+            const handleCopySql = () => {
+                const sql = `create table pharmacy_records (\n  id bigint generated by default as identity primary key,\n  date date,\n  sales numeric,\n  expense numeric,\n  refund numeric,\n  dues numeric,\n  bank_deposit numeric,\n  day_pl numeric,\n  cash_hand numeric,\n  created_at timestamp with time zone default timezone('utc'::text, now()) not null\n);`;
+                navigator.clipboard.writeText(sql).then(() => alert("SQL Copied! Paste this in your Supabase SQL Editor."));
+            };
+
+            // --- RENDER FIRST TIME SETUP ---
+            if (needsSetup) {
+                return (
+                    <div className="flex items-center justify-center min-h-screen p-6 w-full relative">
+                        <ThreeBackground />
+                        <div className="glass-panel p-8 w-full max-w-lg space-y-6 border border-cyan-500 shadow-2xl animate-[fadeIn_0.5s]">
+                            <div className="flex items-center gap-3 text-cyan-400">
+                                <i data-lucide="database" className="w-8 h-8"></i>
+                                <h2 className="text-xl font-bold uppercase tracking-widest">Initialize Database</h2>
+                            </div>
+                            <p className="text-sm text-slate-300">
+                                Your new Cloud Database is connected, but it's empty. Please run this command in your Supabase SQL Editor to create the tables.
+                            </p>
+                            
+                            <div className="sql-block">
+create table pharmacy_records (
+  id bigint generated by default as identity primary key,
+  date date,
+  sales numeric,
+  expense numeric,
+  refund numeric,
+  dues numeric,
+  bank_deposit numeric,
+  day_pl numeric,
+  cash_hand numeric,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+                            </div>
+                            
+                            <div className="grid grid-cols-2 gap-4">
+                                <button onClick={handleCopySql} className="bg-cyan-600 hover:bg-cyan-500 text-white py-3 rounded-lg font-bold text-xs uppercase tracking-widest transition-all">
+                                    Copy Code
+                                </button>
+                                <button onClick={() => window.location.reload()} className="border border-slate-600 hover:border-slate-400 text-slate-300 py-3 rounded-lg font-bold text-xs uppercase tracking-widest transition-all">
+                                    I've Run It, Retry
+                                </button>
+                            </div>
+                            <div className="text-[10px] text-center text-slate-500 pt-2">
+                                Go to <a href="https://supabase.com/dashboard/project/lawvabxmsvakgzucirlw/sql" target="_blank" className="text-cyan-400 underline">Supabase SQL Editor</a>
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
+            // --- RENDER LOGIN ---
+            if (!isLoggedIn) {
+                return (
+                    <div className="flex items-center justify-center min-h-screen p-6 w-full relative">
+                        <ThreeBackground />
+                        <div className="glass-panel p-10 w-full max-w-md space-y-8 animate-[zoomIn_0.4s_ease-out]">
+                            <div className="text-center">
+                                <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-cyan-500/10 border border-cyan-500/30 mb-6 relative">
+                                    <div className="absolute w-full h-full rounded-full border border-cyan-400 opacity-20 animate-ping"></div>
+                                    <i data-lucide="microscope" className="w-10 h-10 text-cyan-400"></i>
+                                </div>
+                                <h1 className="text-2xl font-bold tracking-tight text-white uppercase leading-none">MEDICAL <span className="text-cyan-400">DIAGNOSTIC</span></h1>
+                                <h2 className="text-xl font-light tracking-widest text-slate-400 uppercase mt-1">Centre</h2>
+                                <div className="h-1 w-12 bg-cyan-500 mx-auto mt-4 rounded-full"></div>
+                            </div>
+                            
+                            <form className="space-y-5" onSubmit={handleLoginAttempt}>
+                                <div className="grid grid-cols-2 gap-2 bg-black/20 p-1 rounded-xl">
+                                    <button type="button" onClick={() => setRole('staff')} className={`py-3 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${role === 'staff' ? 'bg-cyan-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}>Lab Staff</button>
+                                    <button type="button" onClick={() => setRole('admin')} className={`py-3 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${role === 'admin' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}>Admin</button>
+                                </div>
+                                
+                                <div className="relative group">
+                                    <i data-lucide="key" className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-focus-within:text-cyan-400 transition-colors"></i>
+                                    <input 
+                                        type="password" 
+                                        value={accessKey} 
+                                        onChange={(e) => setAccessKey(e.target.value)} 
+                                        className="w-full input-field rounded-xl py-4 pl-12 pr-4 text-center tracking-[0.3em] placeholder:tracking-normal placeholder:text-slate-600 text-sm" 
+                                        placeholder="ENTER PASSCODE" 
+                                    />
+                                </div>
+                                <button type="submit" className="w-full bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 py-4 rounded-xl font-bold uppercase text-xs tracking-widest shadow-lg shadow-cyan-900/20 transition-all transform hover:scale-[1.02]">
+                                    Authenticate
+                                </button>
+                            </form>
+                            
+                            <div className="flex items-center justify-center gap-2 text-[10px] text-slate-600 font-mono">
+                                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+                                DATABASE CONNECTION ACTIVE
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
+            // --- RENDER MAIN APP ---
+            return (
+                <div className="min-h-screen pb-20">
+                    <ThreeBackground />
+                    
+                    {/* Header */}
+                    <div className="center-layout pt-4 px-4 no-print sticky top-0 z-50">
+                        <nav className="glass-panel px-6 py-4 flex flex-wrap items-center justify-between gap-6 shadow-2xl backdrop-blur-xl">
+                            <div className="flex items-center gap-4">
+                                <div className="p-2.5 rounded-lg bg-cyan-500/10 border border-cyan-500/20">
+                                    <i data-lucide="activity" className="w-6 h-6 text-cyan-400"></i>
+                                </div>
+                                <div>
+                                    <h2 className="font-bold text-lg tracking-tight uppercase text-slate-100 leading-tight">Medical Diagnostic <span className="text-cyan-400">Centre</span></h2>
+                                    <p className="text-[10px] uppercase font-bold text-slate-500 tracking-widest flex items-center gap-1.5">
+                                        <span className={`w-1.5 h-1.5 rounded-full ${role === 'admin' ? 'bg-indigo-500' : 'bg-cyan-500'}`}></span>
+                                        {role} Interface
+                                    </p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                {['dashboard', 'ledger', 'admin'].map(t => (
+                                    (t !== 'admin' || role === 'admin') && 
+                                    <button key={t} onClick={() => setActiveTab(t)} className={`px-5 py-2 rounded-lg text-[10px] font-bold uppercase transition-all tracking-widest border border-transparent ${activeTab === t ? 'bg-cyan-500/10 border-cyan-500/30 text-cyan-400' : 'text-slate-500 hover:text-slate-300'}`}>
+                                        {t}
+                                    </button>
+                                ))}
+                                <div className="w-px h-6 bg-white/10 mx-2"></div>
+                                <button onClick={() => setIsLoggedIn(false)} className="p-2 text-rose-500 hover:bg-rose-500/10 rounded-lg transition-colors" title="Logout">
+                                    <i data-lucide="log-out" className="w-4 h-4"></i>
+                                </button>
+                            </div>
+                        </nav>
+                    </div>
+
+                    <main className="center-layout px-4 mt-8">
+                        {/* Error Banner */}
+                        {dbError && (
+                            <div className="mb-6 p-4 bg-rose-500/10 border border-rose-500/30 rounded-xl flex items-center gap-3 text-rose-400">
+                                <i data-lucide="alert-triangle" className="w-5 h-5"></i>
+                                <span className="text-xs font-bold uppercase tracking-wide">Sync Failure: {dbError}</span>
+                            </div>
+                        )}
+
+                        {loading ? (
+                            <div className="flex flex-col items-center justify-center py-32 text-cyan-400">
+                                <span className="loader mb-6"></span>
+                                <p className="font-mono text-xs tracking-[0.2em] opacity-70 animate-pulse">LOADING DIAGNOSTIC DATA...</p>
+                            </div>
+                        ) : activeTab === 'dashboard' ? (
+                            <div className="space-y-8 animate-[fadeIn_0.5s_ease-out]">
+                                
+                                {/* KPI Cards */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                                    {[
+                                        { l: 'Total Lab Revenue', v: stats.sales, icon: 'banknote', color: 'text-emerald-400', bg: 'from-emerald-500/5 to-emerald-500/0', border: 'border-emerald-500/20' },
+                                        { l: 'Operational Exp', v: stats.expense, icon: 'trending-down', color: 'text-rose-400', bg: 'from-rose-500/5 to-rose-500/0', border: 'border-rose-500/20' },
+                                        { l: 'Patient Refunds', v: stats.refund, icon: 'rotate-ccw', color: 'text-amber-400', bg: 'from-amber-500/5 to-amber-500/0', border: 'border-amber-500/20' },
+                                        { l: 'Net Centre Profit', v: stats.profit, icon: 'pie-chart', color: 'text-cyan-400', bg: 'from-cyan-500/5 to-cyan-500/0', border: 'border-cyan-500/20' }
+                                    ].map((s, idx) => (
+                                        <div key={idx} className={`glass-panel p-6 relative overflow-hidden group bg-gradient-to-br ${s.bg} border ${s.border}`}>
+                                            <div className="relative z-10">
+                                                <div className="flex justify-between items-start mb-4">
+                                                    <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest">{s.l}</p>
+                                                    <i data-lucide={s.icon} className={`w-4 h-4 ${s.color} opacity-70`}></i>
+                                                </div>
+                                                <h3 className="text-2xl font-mono font-bold text-white tracking-tight">₹{fmt(s.v)}</h3>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
+                                    
+                                    {/* Entry Form */}
+                                    <div className="xl:col-span-4 no-print glass-panel p-6 h-fit border-t-2 border-t-cyan-500">
+                                        <div className="flex items-center gap-2 mb-6 border-b border-white/5 pb-4">
+                                            <i data-lucide="file-plus" className="text-cyan-400 w-5 h-5"></i>
+                                            <h4 className="text-sm font-bold uppercase tracking-wide">Daily Entry</h4>
+                                        </div>
+                                        <form onSubmit={addRecord} className="space-y-4">
+                                            <div>
+                                                <label className="text-[10px] text-slate-500 uppercase font-bold mb-1 block pl-1">Date</label>
+                                                <input type="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} className="w-full input-field rounded-lg p-3 text-sm font-mono" required />
+                                            </div>
+                                            
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div>
+                                                    <label className="text-[10px] text-slate-500 uppercase font-bold mb-1 block pl-1">Lab Revenue</label>
+                                                    <div className="relative">
+                                                        <span className="absolute left-3 top-3 text-slate-500 text-xs">₹</span>
+                                                        <input type="number" value={formData.sales} onChange={e => setFormData({...formData, sales: e.target.value})} className="w-full input-field rounded-lg p-3 pl-6 text-sm font-mono text-emerald-400" placeholder="0" />
+                                                    </div>
+                                                </div>
+                                                <div>
+                                                    <label className="text-[10px] text-slate-500 uppercase font-bold mb-1 block pl-1">Lab Expense</label>
+                                                    <div className="relative">
+                                                        <span className="absolute left-3 top-3 text-slate-500 text-xs">₹</span>
+                                                        <input type="number" value={formData.expense} onChange={e => setFormData({...formData, expense: e.target.value})} className="w-full input-field rounded-lg p-3 pl-6 text-sm font-mono text-rose-400" placeholder="0" />
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div>
+                                                    <label className="text-[10px] text-slate-500 uppercase font-bold mb-1 block pl-1">Refunds</label>
+                                                    <input type="number" value={formData.refund} onChange={e => setFormData({...formData, refund: e.target.value})} className="w-full input-field rounded-lg p-3 text-sm font-mono" placeholder="0" />
+                                                </div>
+                                                <div>
+                                                    <label className="text-[10px] text-slate-500 uppercase font-bold mb-1 block pl-1">Patient Dues</label>
+                                                    <input type="number" value={formData.dues} onChange={e => setFormData({...formData, dues: e.target.value})} className="w-full input-field rounded-lg p-3 text-sm font-mono" placeholder="0" />
+                                                </div>
+                                            </div>
+
+                                            <div>
+                                                <label className="text-[10px] text-slate-500 uppercase font-bold mb-1 block pl-1">Bank Deposit</label>
+                                                <input type="number" value={formData.bankDeposit} onChange={e => setFormData({...formData, bankDeposit: e.target.value})} className="w-full input-field rounded-lg p-3 text-sm font-mono" placeholder="0" />
+                                            </div>
+
+                                            <button type="submit" disabled={isSaving} className={`w-full py-4 rounded-lg font-bold uppercase text-[10px] tracking-widest shadow-lg transition-all flex items-center justify-center gap-2 ${isSaving ? 'bg-slate-700 cursor-not-allowed' : 'bg-cyan-600 hover:bg-cyan-500 text-white'}`}>
+                                                {isSaving ? <><span className="loader w-4 h-4 border-2"></span> Syncing...</> : <><i data-lucide="cloud-upload" className="w-4 h-4"></i> Submit Record</>}
+                                            </button>
+                                        </form>
+                                    </div>
+
+                                    {/* Monthly Table */}
+                                    <div className="xl:col-span-8 glass-panel p-6 border-t-2 border-t-indigo-500 flex flex-col">
+                                        <div className="flex justify-between items-center mb-6">
+                                            <h4 className="text-sm font-bold uppercase tracking-wide flex items-center gap-2">
+                                                <i data-lucide="calendar" className="text-indigo-400 w-4 h-4"></i> Monthly Overview
+                                            </h4>
+                                            <div className="flex gap-2">
+                                                <button onClick={downloadCSV} className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-slate-400 hover:text-white transition-colors"><i data-lucide="download" className="w-4 h-4"></i></button>
+                                                <button onClick={() => window.print()} className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-slate-400 hover:text-white transition-colors"><i data-lucide="printer" className="w-4 h-4"></i></button>
+                                            </div>
+                                        </div>
+                                        <div className="overflow-x-auto custom-scrollbar flex-1">
+                                            <table className="w-full text-left border-collapse">
+                                                <thead className="text-[10px] font-bold text-slate-500 uppercase tracking-wider sticky top-0 bg-[#0d121e] z-10 shadow-sm">
+                                                    <tr>
+                                                        <th className="pb-3 pl-2">Period</th>
+                                                        <th className="pb-3 text-right">Revenue</th>
+                                                        <th className="pb-3 text-right">Expenses</th>
+                                                        <th className="pb-3 text-right">Deposits</th>
+                                                        <th className="pb-3 text-right pr-2">Net Profit</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-white/5 text-xs font-mono">
+                                                    {monthlySummary.map(m => (
+                                                        <tr key={m.m} className="hover:bg-white/5 transition-colors">
+                                                            <td className="py-4 pl-2 font-sans font-medium text-slate-300">{m.m}</td>
+                                                            <td className="py-4 text-right text-emerald-400">₹{fmt(m.sales)}</td>
+                                                            <td className="py-4 text-right text-rose-400">₹{fmt(m.expense)}</td>
+                                                            <td className="py-4 text-right text-indigo-400">₹{fmt(m.bankDeposit)}</td>
+                                                            <td className={`py-4 text-right pr-2 font-bold ${m.profit >= 0 ? 'text-cyan-400' : 'text-rose-500'}`}>₹{fmt(m.profit)}</td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        ) : activeTab === 'ledger' ? (
+                            <div className="animate-[fadeIn_0.5s_ease-out]">
+                                <div className="glass-panel overflow-hidden border-t-2 border-t-emerald-500">
+                                    <div className="p-6 border-b border-white/5 flex flex-wrap justify-between items-center gap-4 bg-white/5">
+                                        <div>
+                                            <h4 className="text-sm font-bold uppercase tracking-wide">Detailed Transaction Ledger</h4>
+                                            <p className="text-[10px] text-slate-500 uppercase mt-1">Full database history</p>
+                                        </div>
+                                        <button onClick={downloadCSV} className="px-4 py-2 bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-600/30 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all flex items-center gap-2">
+                                            <i data-lucide="file-spreadsheet" className="w-4 h-4"></i> Export Data
+                                        </button>
+                                    </div>
+                                    <div className="overflow-x-auto custom-scrollbar">
+                                        <table className="w-full text-left text-xs whitespace-nowrap">
+                                            <thead className="bg-black/20 text-slate-500 text-[10px] font-bold uppercase tracking-wider">
+                                                <tr>
+                                                    <th className="p-4 pl-6">Date</th>
+                                                    <th className="p-4 text-right text-emerald-500/70">Lab Revenue</th>
+                                                    <th className="p-4 text-right text-rose-500/70">Expense</th>
+                                                    <th className="p-4 text-right text-amber-500/70">Refund</th>
+                                                    <th className="p-4 text-right text-indigo-500/70">Banked</th>
+                                                    <th className="p-4 text-right">Cash-in-Hand</th>
+                                                    <th className="p-4 text-right">Daily P/L</th>
+                                                    <th className="p-4 text-center">Action</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-white/5 font-mono">
+                                                {records.map(r => (
+                                                    <tr key={r.id} className="hover:bg-white/5 transition-all group">
+                                                        <td className="p-4 pl-6 font-sans text-slate-300">{r.date}</td>
+                                                        <td className="p-4 text-right font-medium text-emerald-400">₹{fmt(r.sales)}</td>
+                                                        <td className="p-4 text-right text-rose-400">₹{fmt(r.expense)}</td>
+                                                        <td className="p-4 text-right text-amber-400">₹{fmt(r.refund)}</td>
+                                                        <td className="p-4 text-right text-indigo-400">₹{fmt(r.bankDeposit)}</td>
+                                                        <td className="p-4 text-right text-white font-bold">₹{fmt(r.cashHand)}</td>
+                                                        <td className={`p-4 text-right font-bold ${r.dayPL >= 0 ? 'text-cyan-400' : 'text-rose-500'}`}>₹{fmt(r.dayPL)}</td>
+                                                        <td className="p-4 text-center">
+                                                            {role === 'admin' && (
+                                                                <button onClick={() => handleDelete(r.id)} className="p-2 text-rose-500 hover:bg-rose-500/20 rounded opacity-0 group-hover:opacity-100 transition-all" title="Delete Entry">
+                                                                    <i data-lucide="trash-2" className="w-4 h-4"></i>
+                                                                </button>
+                                                            )}
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        ) : (
+                            // Admin Tab
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-[zoomIn_0.3s_ease-out]">
+                                <div className="glass-panel p-8 border-t-2 border-t-indigo-500 flex flex-col items-center text-center space-y-6">
+                                    <div className="w-16 h-16 rounded-2xl bg-indigo-500/10 flex items-center justify-center border border-indigo-500/20">
+                                        <i data-lucide="shield-check" className="w-8 h-8 text-indigo-400"></i>
+                                    </div>
+                                    <div>
+                                        <h3 className="text-lg font-bold uppercase tracking-tight text-white">Security Credentials</h3>
+                                        <p className="text-xs text-slate-500 mt-2 max-w-xs mx-auto">These keys grant access to the system. Keep them confidential.</p>
+                                    </div>
+                                    <div className="w-full bg-black/20 rounded-xl p-4 border border-white/5 space-y-3">
+                                        <div className="flex justify-between items-center px-4">
+                                            <span className="text-[10px] font-bold text-slate-500 uppercase">Staff Key</span>
+                                            <code className="text-emerald-400 font-mono text-sm bg-emerald-400/10 px-2 py-1 rounded">{staffPass}</code>
+                                        </div>
+                                        <div className="h-px bg-white/5 w-full"></div>
+                                        <div className="flex justify-between items-center px-4">
+                                            <span className="text-[10px] font-bold text-slate-500 uppercase">Admin Key</span>
+                                            <code className="text-indigo-400 font-mono text-sm bg-indigo-400/10 px-2 py-1 rounded">{adminPass}</code>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="glass-panel p-8 border-t-2 border-t-cyan-500 flex flex-col items-center text-center space-y-6">
+                                    <div className="w-16 h-16 rounded-2xl bg-cyan-500/10 flex items-center justify-center border border-cyan-500/20">
+                                        <i data-lucide="database" className="w-8 h-8 text-cyan-400"></i>
+                                    </div>
+                                    <div>
+                                        <h3 className="text-lg font-bold uppercase tracking-tight text-white">Cloud Database</h3>
+                                        <p className="text-xs text-slate-500 mt-2">Direct access to the Supabase backend console.</p>
+                                    </div>
+                                    <button onClick={() => window.open('https://supabase.com/dashboard/project/lawvabxmsvakgzucirlw/editor', '_blank')} className="w-full py-4 rounded-xl border border-slate-700 hover:border-cyan-500/50 hover:bg-cyan-500/10 text-slate-300 hover:text-white transition-all text-xs font-bold uppercase tracking-widest">
+                                        Open Database Console
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                    </main>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
