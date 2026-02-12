@@ -766,7 +766,7 @@ create table if not exists audit_logs (
                                                     { l: 'Total Lab Revenue', v: stats.sales, icon: 'banknote', color: 'text-emerald-400', bg: 'from-emerald-500/5 to-emerald-500/0', border: 'border-emerald-500/20' },
                                                     { l: 'Operational Exp', v: stats.expense, icon: 'trending-down', color: 'text-rose-400', bg: 'from-rose-500/5 to-rose-500/0', border: 'border-rose-500/20' },
                                                     { l: 'Patient Refunds', v: stats.refund, icon: 'rotate-ccw', color: 'text-amber-400', bg: 'from-amber-500/5 to-amber-500/0', border: 'border-amber-500/20' },
-                                                    { l: 'Net Centre Profit', v: stats.profit, icon: 'pie-chart', color: 'text-cyan-400', bg: 'from-cyan-500/5 to-cyan-500/0', border: 'border-cyan-500/20' }
+                                                    { l: 'Net Centre Profit', v: stats.netProfit, icon: 'pie-chart', color: 'text-cyan-400', bg: 'from-cyan-500/5 to-cyan-500/0', border: 'border-cyan-500/20' }
                                                 ].map((s, idx) => (
                                                     <div key={idx} className={`glass-panel p-6 relative overflow-hidden group bg-gradient-to-br ${s.bg} border ${s.border}`}>
                                                         <div className="relative z-10">
