@@ -160,14 +160,15 @@
         const currentAnonKey = localStorage.getItem('mdc_anon_key_v2') || DEFAULT_KEY;
         const supabaseClient = supabase.createClient(SUPABASE_URL, currentAnonKey);
 
-        // --- 3D Background Logic (DNA DOUBLE HELIX) ---
+        // --- ENHANCED 3D Background Logic (DNA LAB CENTRE) ---
         const ThreeBackground = () => {
             useEffect(() => {
                 const container = document.getElementById('canvas-container');
                 if (!container || container.children.length > 0) return;
 
                 const scene = new THREE.Scene();
-                scene.fog = new THREE.FogExp2(0x050b14, 0.03);
+                // Enhanced fog for depth of field
+                scene.fog = new THREE.FogExp2(0x050b14, 0.025);
 
                 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
                 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
@@ -176,71 +177,178 @@
                 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
                 container.appendChild(renderer.domElement);
 
+                // Enhanced Lab Lighting
                 const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
                 scene.add(ambientLight);
-                const pointLight1 = new THREE.PointLight(0x06b6d4, 2, 50); 
-                pointLight1.position.set(10, 10, 10);
+                const pointLight1 = new THREE.PointLight(0x06b6d4, 2.5, 60); // Cyan
+                pointLight1.position.set(15, 10, 10);
                 scene.add(pointLight1);
-                const pointLight2 = new THREE.PointLight(0x8b5cf6, 2, 50); 
-                pointLight2.position.set(-10, -10, -10);
+                const pointLight2 = new THREE.PointLight(0x8b5cf6, 2.5, 60); // Purple
+                pointLight2.position.set(-15, -10, -10);
                 scene.add(pointLight2);
+                const pointLight3 = new THREE.PointLight(0x38bdf8, 1.5, 40); // Light Blue
+                pointLight3.position.set(0, 0, -20);
+                scene.add(pointLight3);
 
-                const dnaGroup = new THREE.Group();
-                
-                // DNA Structure Parameters
-                const numPairs = 35;
-                const radius = 2.2;
-                const verticalStep = 0.55;
-                
-                const particleGeo = new THREE.SphereGeometry(0.25, 16, 16);
-                const mat1 = new THREE.MeshPhysicalMaterial({ color: 0x06b6d4, transparent: true, opacity: 0.9, roughness: 0.1, metalness: 0.3 }); // Cyan
-                const mat2 = new THREE.MeshPhysicalMaterial({ color: 0x8b5cf6, transparent: true, opacity: 0.9, roughness: 0.1, metalness: 0.3 }); // Purple
-                const lineMat = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.25 });
+                // Helper Function to Create DNA Strands
+                const createDNAStrand = (pairs, radius, step, colorA, colorB, opacity) => {
+                    const group = new THREE.Group();
+                    const particleGeo = new THREE.SphereGeometry(0.25, 16, 16);
+                    const mat1 = new THREE.MeshPhysicalMaterial({ color: colorA, transparent: true, opacity: opacity, roughness: 0.1, metalness: 0.4 });
+                    const mat2 = new THREE.MeshPhysicalMaterial({ color: colorB, transparent: true, opacity: opacity, roughness: 0.1, metalness: 0.4 });
+                    const lineMat = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: opacity * 0.3 });
 
-                for (let i = 0; i < numPairs; i++) {
-                    const t = i * 0.45; // Rotation angle for twist
-                    const y = (i - numPairs / 2) * verticalStep;
+                    for (let i = 0; i < pairs; i++) {
+                        const t = i * 0.45;
+                        const y = (i - pairs / 2) * step;
+                        
+                        const x1 = Math.sin(t) * radius;
+                        const z1 = Math.cos(t) * radius;
+                        const sphere1 = new THREE.Mesh(particleGeo, mat1);
+                        sphere1.position.set(x1, y, z1);
+                        group.add(sphere1);
+                        
+                        const x2 = Math.sin(t + Math.PI) * radius;
+                        const z2 = Math.cos(t + Math.PI) * radius;
+                        const sphere2 = new THREE.Mesh(particleGeo, mat2);
+                        sphere2.position.set(x2, y, z2);
+                        group.add(sphere2);
+                        
+                        const points = [new THREE.Vector3(x1, y, z1), new THREE.Vector3(x2, y, z2)];
+                        const lineGeo = new THREE.BufferGeometry().setFromPoints(points);
+                        const line = new THREE.Line(lineGeo, lineMat);
+                        group.add(line);
+                    }
+                    return group;
+                };
+
+                // 1. Main Focus DNA (Center, pushed back slightly so UI takes priority)
+                const mainDNA = createDNAStrand(45, 2.2, 0.55, 0x06b6d4, 0x8b5cf6, 0.4);
+                mainDNA.position.z = -5;
+                scene.add(mainDNA);
+
+                // 2. Left DNA Strand (Close to camera, framing the login box)
+                const leftDNA = createDNAStrand(60, 1.2, 0.45, 0x0ea5e9, 0x4f46e5, 0.8);
+                leftDNA.position.set(-15, 0, 8); 
+                scene.add(leftDNA);
+
+                // 3. Right DNA Strand (Close to camera, framing the login box)
+                const rightDNA = createDNAStrand(60, 1.2, 0.45, 0x9333ea, 0xec4899, 0.8);
+                rightDNA.position.set(15, 0, 8); 
+                scene.add(rightDNA);
+
+                // 4. Chemical Molecular Rings (Rising Hexagons on far left and right)
+                const hexGroup = new THREE.Group();
+                const hexGeo = new THREE.TorusGeometry(1.4, 0.05, 5, 6); // 6 segments creates a hexagon
+                const hexMat = new THREE.MeshPhysicalMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.5, wireframe: true, metalness: 0.8 });
+                for(let i=0; i<24; i++) {
+                    const hex = new THREE.Mesh(hexGeo, hexMat);
+                    // Spawn exclusively on the left or right sides
+                    const isLeft = Math.random() > 0.5;
+                    const xPos = isLeft ? -16 - Math.random()*8 : 16 + Math.random()*8;
                     
-                    // Strand 1
-                    const x1 = Math.sin(t) * radius;
-                    const z1 = Math.cos(t) * radius;
-                    const sphere1 = new THREE.Mesh(particleGeo, mat1);
-                    sphere1.position.set(x1, y, z1);
-                    dnaGroup.add(sphere1);
-                    
-                    // Strand 2
-                    const x2 = Math.sin(t + Math.PI) * radius;
-                    const z2 = Math.cos(t + Math.PI) * radius;
-                    const sphere2 = new THREE.Mesh(particleGeo, mat2);
-                    sphere2.position.set(x2, y, z2);
-                    dnaGroup.add(sphere2);
-                    
-                    // Base Pair Connecting Rod
-                    const points = [new THREE.Vector3(x1, y, z1), new THREE.Vector3(x2, y, z2)];
-                    const lineGeo = new THREE.BufferGeometry().setFromPoints(points);
-                    const line = new THREE.Line(lineGeo, lineMat);
-                    dnaGroup.add(line);
+                    hex.position.set(xPos, (Math.random() - 0.5) * 50, (Math.random() - 0.5) * 15);
+                    hex.rotation.set(Math.random()*Math.PI, Math.random()*Math.PI, Math.random()*Math.PI);
+                    hex.userData = {
+                        speedY: Math.random() * 0.06 + 0.02,
+                        rotX: (Math.random() - 0.5) * 0.03,
+                        rotY: (Math.random() - 0.5) * 0.03,
+                        rotZ: (Math.random() - 0.5) * 0.03
+                    };
+                    hexGroup.add(hex);
                 }
-                
-                // Floating microscopic cells/particles in the background
+                scene.add(hexGroup);
+
+                // 5. Floating Lab "Cells" / Virus structures (Wireframe Icosahedrons)
+                const cellsGroup = new THREE.Group();
+                const cellGeo = new THREE.IcosahedronGeometry(1.8, 1);
+                const cellMat = new THREE.MeshPhysicalMaterial({ color: 0x22d3ee, wireframe: true, transparent: true, opacity: 0.15 });
+                for(let i=0; i<8; i++) {
+                    const cell = new THREE.Mesh(cellGeo, cellMat);
+                    cell.position.set((Math.random() - 0.5) * 50, (Math.random() - 0.5) * 40, (Math.random() - 0.5) * 30 - 5);
+                    cell.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, 0);
+                    // unique drifting speeds
+                    cell.userData = { 
+                        rx: (Math.random() - 0.5) * 0.005, 
+                        ry: (Math.random() - 0.5) * 0.005, 
+                        speed: Math.random() * 0.001 + 0.0005 
+                    };
+                    cellsGroup.add(cell);
+                }
+                scene.add(cellsGroup);
+
+                // 5. Dynamic Microscopic Particles
+                const particlesGroup = new THREE.Group();
                 const floatGeo = new THREE.SphereGeometry(0.06, 8, 8);
-                const floatMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.3 });
-                for(let i = 0; i < 120; i++) {
+                const floatMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.4 });
+                for(let i = 0; i < 150; i++) {
                     const m = new THREE.Mesh(floatGeo, floatMat);
-                    m.position.set((Math.random() - 0.5) * 30, (Math.random() - 0.5) * 30, (Math.random() - 0.5) * 20);
-                    dnaGroup.add(m);
+                    m.position.set((Math.random() - 0.5) * 40, (Math.random() - 0.5) * 40, (Math.random() - 0.5) * 20);
+                    // unique drifting paths
+                    m.userData = { 
+                        offset: Math.random() * Math.PI * 2, 
+                        speedX: (Math.random() - 0.5) * 0.01,
+                        speedY: (Math.random() - 0.5) * 0.01
+                    };
+                    particlesGroup.add(m);
                 }
-                
-                scene.add(dnaGroup);
-                camera.position.z = 20;
+                scene.add(particlesGroup);
 
+                camera.position.z = 22;
+
+                // --- Animation Loop ---
                 let reqId;
                 const animate = () => {
                     reqId = requestAnimationFrame(animate);
-                    // Rotate the DNA Helix gracefully
-                    dnaGroup.rotation.y += 0.003; 
-                    dnaGroup.rotation.x = Math.sin(Date.now() * 0.0005) * 0.05; 
-                    dnaGroup.position.y = Math.sin(Date.now() * 0.001) * 0.8; // Gentle liquid floating effect
+                    
+                    const time = Date.now();
+
+                    // Main DNA Animation
+                    mainDNA.rotation.y += 0.002; 
+                    mainDNA.rotation.x = Math.sin(time * 0.0005) * 0.05; 
+                    mainDNA.position.y = Math.sin(time * 0.001) * 0.8; 
+
+                    // Left and Right Framing DNA Animations
+                    leftDNA.rotation.y -= 0.006; // Spin relatively fast
+                    leftDNA.position.y = Math.sin(time * 0.0015) * 1.5;
+                    
+                    rightDNA.rotation.y += 0.006; // Spin opposite direction
+                    rightDNA.position.y = Math.cos(time * 0.0015) * 1.5;
+
+                    // Chemical Hexagons Rising Animation
+                    hexGroup.children.forEach(hex => {
+                        hex.position.y += hex.userData.speedY;
+                        hex.rotation.x += hex.userData.rotX;
+                        hex.rotation.y += hex.userData.rotY;
+                        hex.rotation.z += hex.userData.rotZ;
+                        
+                        // Reset position to bottom once they float off top
+                        if (hex.position.y > 25) {
+                            hex.position.y = -25;
+                            // Randomly spawn on left or right edge again
+                            hex.position.x = (Math.random() > 0.5) ? -16 - Math.random()*8 : 16 + Math.random()*8;
+                        }
+                    });
+
+                    // Floating Cells Animation
+                    cellsGroup.children.forEach(cell => {
+                        cell.rotation.x += cell.userData.rx;
+                        cell.rotation.y += cell.userData.ry;
+                        cell.position.y += Math.sin(time * cell.userData.speed) * 0.01;
+                    });
+
+                    // Particles Drifting Physics
+                    particlesGroup.children.forEach((p) => {
+                        p.position.x += p.userData.speedX;
+                        p.position.y += Math.sin(time * 0.002 + p.userData.offset) * 0.01 + p.userData.speedY;
+                        
+                        // Screen wrapping for infinite flow
+                        if (p.position.x > 20) p.position.x = -20;
+                        if (p.position.x < -20) p.position.x = 20;
+                        if (p.position.y > 20) p.position.y = -20;
+                        if (p.position.y < -20) p.position.y = 20;
+                    });
+
                     renderer.render(scene, camera);
                 };
                 animate();
@@ -258,9 +366,6 @@
                     if (container.contains(renderer.domElement)) {
                         container.removeChild(renderer.domElement);
                     }
-                    particleGeo.dispose();
-                    mat1.dispose();
-                    mat2.dispose();
                     renderer.dispose();
                 };
             }, []);
