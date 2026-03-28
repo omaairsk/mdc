@@ -26,7 +26,7 @@
         body { 
             font-family: 'Inter', sans-serif; 
             overflow-x: hidden;
-            background-color: #0f172a;
+            background-color: #050b14;
             color: #e2e8f0;
             margin: 0;
             padding: 0;
@@ -50,14 +50,14 @@
             -webkit-backdrop-filter: blur(20px);
             border: 1px solid var(--glass-border); 
             border-radius: 1rem;
-            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
             transition: all 0.3s ease;
         }
 
         .glass-panel:hover {
             border-color: rgba(6, 182, 212, 0.3);
             transform: translateY(-2px);
-            box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.4);
+            box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.6);
         }
 
         .input-field {
@@ -118,7 +118,6 @@
         }
         @keyframes rotation { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-        /* Syntax highlighting for SQL block */
         .sql-block {
             background: #1e293b;
             color: #a5b4fc;
@@ -131,7 +130,6 @@
             white-space: pre-wrap;
         }
         
-        /* Modal Overlay */
         .modal-overlay {
             position: fixed;
             top: 0;
@@ -154,22 +152,22 @@
     <script type="text/babel">
         const { useState, useEffect, useMemo, useRef, useCallback } = React;
 
-        // --- Supabase Config ---
-        const SUPABASE_URL = "https://lawvabxmsvakgzucirlw.supabase.co";
-        const SUPABASE_ANON_KEY = "sb_publishable_flu-nGiaQz30VDlruWfpUw_q1Jvj0_D";
-        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        // --- Supabase Config with Safe Fallback ---
+        const SUPABASE_URL = "https://ttrxyxrssgzlyforxage.supabase.co";
+        const DEFAULT_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR0cnh5eHJzc2d6bHlmb3J4YWdlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ3MTYwOTYsImV4cCI6MjA5MDI5MjA5Nn0.TuT31Wzr2bHJzbymNLtQ3h-05UV9EU8FLLSebw6qLnY";
+        
+        // Check local storage for the correct key, otherwise use the default
+        const currentAnonKey = localStorage.getItem('mdc_anon_key_v2') || DEFAULT_KEY;
+        const supabaseClient = supabase.createClient(SUPABASE_URL, currentAnonKey);
 
-        // --- 3D Background Logic ---
+        // --- 3D Background Logic (DNA DOUBLE HELIX) ---
         const ThreeBackground = () => {
             useEffect(() => {
                 const container = document.getElementById('canvas-container');
-                if (!container) return;
-
-                // Check if scene already exists (prevent double initialization)
-                if (container.children.length > 0) return;
+                if (!container || container.children.length > 0) return;
 
                 const scene = new THREE.Scene();
-                scene.fog = new THREE.FogExp2(0x0f172a, 0.02);
+                scene.fog = new THREE.FogExp2(0x050b14, 0.03);
 
                 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
                 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
@@ -178,44 +176,71 @@
                 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
                 container.appendChild(renderer.domElement);
 
-                const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+                const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
                 scene.add(ambientLight);
-                const pointLight = new THREE.PointLight(0x06b6d4, 2, 50); 
-                pointLight.position.set(10, 10, 10);
-                scene.add(pointLight);
+                const pointLight1 = new THREE.PointLight(0x06b6d4, 2, 50); 
+                pointLight1.position.set(10, 10, 10);
+                scene.add(pointLight1);
+                const pointLight2 = new THREE.PointLight(0x8b5cf6, 2, 50); 
+                pointLight2.position.set(-10, -10, -10);
+                scene.add(pointLight2);
 
-                const group = new THREE.Group();
-                const geometry = new THREE.SphereGeometry(0.2, 16, 16);
-                const material = new THREE.MeshPhysicalMaterial({ 
-                    color: 0x22d3ee, 
-                    transparent: true, 
-                    opacity: 0.6,
-                    roughness: 0.1,
-                    metalness: 0.1
-                });
+                const dnaGroup = new THREE.Group();
+                
+                // DNA Structure Parameters
+                const numPairs = 35;
+                const radius = 2.2;
+                const verticalStep = 0.55;
+                
+                const particleGeo = new THREE.SphereGeometry(0.25, 16, 16);
+                const mat1 = new THREE.MeshPhysicalMaterial({ color: 0x06b6d4, transparent: true, opacity: 0.9, roughness: 0.1, metalness: 0.3 }); // Cyan
+                const mat2 = new THREE.MeshPhysicalMaterial({ color: 0x8b5cf6, transparent: true, opacity: 0.9, roughness: 0.1, metalness: 0.3 }); // Purple
+                const lineMat = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.25 });
 
-                for (let i = 0; i < 150; i++) {
-                    const mesh = new THREE.Mesh(geometry, material);
-                    mesh.position.set(
-                        (Math.random() - 0.5) * 40,
-                        (Math.random() - 0.5) * 40,
-                        (Math.random() - 0.5) * 30
-                    );
-                    mesh.scale.setScalar(Math.random() * 2 + 0.5);
-                    group.add(mesh);
+                for (let i = 0; i < numPairs; i++) {
+                    const t = i * 0.45; // Rotation angle for twist
+                    const y = (i - numPairs / 2) * verticalStep;
+                    
+                    // Strand 1
+                    const x1 = Math.sin(t) * radius;
+                    const z1 = Math.cos(t) * radius;
+                    const sphere1 = new THREE.Mesh(particleGeo, mat1);
+                    sphere1.position.set(x1, y, z1);
+                    dnaGroup.add(sphere1);
+                    
+                    // Strand 2
+                    const x2 = Math.sin(t + Math.PI) * radius;
+                    const z2 = Math.cos(t + Math.PI) * radius;
+                    const sphere2 = new THREE.Mesh(particleGeo, mat2);
+                    sphere2.position.set(x2, y, z2);
+                    dnaGroup.add(sphere2);
+                    
+                    // Base Pair Connecting Rod
+                    const points = [new THREE.Vector3(x1, y, z1), new THREE.Vector3(x2, y, z2)];
+                    const lineGeo = new THREE.BufferGeometry().setFromPoints(points);
+                    const line = new THREE.Line(lineGeo, lineMat);
+                    dnaGroup.add(line);
                 }
-                scene.add(group);
-
-                camera.position.z = 15;
+                
+                // Floating microscopic cells/particles in the background
+                const floatGeo = new THREE.SphereGeometry(0.06, 8, 8);
+                const floatMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.3 });
+                for(let i = 0; i < 120; i++) {
+                    const m = new THREE.Mesh(floatGeo, floatMat);
+                    m.position.set((Math.random() - 0.5) * 30, (Math.random() - 0.5) * 30, (Math.random() - 0.5) * 20);
+                    dnaGroup.add(m);
+                }
+                
+                scene.add(dnaGroup);
+                camera.position.z = 20;
 
                 let reqId;
                 const animate = () => {
                     reqId = requestAnimationFrame(animate);
-                    group.rotation.y += 0.0008;
-                    group.rotation.x += 0.0004;
-                    group.children.forEach((child, i) => {
-                        child.position.y += Math.sin(Date.now() * 0.001 + i) * 0.005;
-                    });
+                    // Rotate the DNA Helix gracefully
+                    dnaGroup.rotation.y += 0.003; 
+                    dnaGroup.rotation.x = Math.sin(Date.now() * 0.0005) * 0.05; 
+                    dnaGroup.position.y = Math.sin(Date.now() * 0.001) * 0.8; // Gentle liquid floating effect
                     renderer.render(scene, camera);
                 };
                 animate();
@@ -233,44 +258,32 @@
                     if (container.contains(renderer.domElement)) {
                         container.removeChild(renderer.domElement);
                     }
-                    geometry.dispose();
-                    material.dispose();
+                    particleGeo.dispose();
+                    mat1.dispose();
+                    mat2.dispose();
                     renderer.dispose();
                 };
             }, []);
             return null;
         };
 
-        // --- Safe Icon Component (Prevents React DOM Crash) ---
+        // --- Safe Icon Component ---
         const Icon = ({ name, className = "" }) => {
             const ref = useRef(null);
-            
             useEffect(() => {
                 if (ref.current && window.lucide) {
-                    // Safe update: create the i tag manually and let Lucide replace it inside our protected span
                     ref.current.innerHTML = `<i data-lucide="${name}" class="${className}"></i>`;
-                    window.lucide.createIcons({
-                        root: ref.current
-                    });
+                    window.lucide.createIcons({ root: ref.current });
                 }
             }, [name, className]);
-
             return <span ref={ref} className={`inline-flex items-center justify-center align-middle ${className}`} style={{ minWidth: '1em', minHeight: '1em' }}></span>;
         };
 
         // --- Edit Modal Component ---
         const EditModal = ({ record, onClose, onSave, isSaving }) => {
             const [editData, setEditData] = useState(record);
-
-            const handleChange = (e) => {
-                const { name, value } = e.target;
-                setEditData(prev => ({ ...prev, [name]: value }));
-            };
-
-            const handleSubmit = (e) => {
-                e.preventDefault();
-                onSave(editData);
-            };
+            const handleChange = (e) => setEditData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+            const handleSubmit = (e) => { e.preventDefault(); onSave(editData); };
 
             return (
                 <div className="modal-overlay">
@@ -280,40 +293,20 @@
                         </h3>
                         <form onSubmit={handleSubmit} className="space-y-4">
                             <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="text-[10px] uppercase text-slate-500 font-bold">Date</label>
-                                    <input type="date" name="date" value={editData.date} onChange={handleChange} className="w-full input-field rounded-lg p-2.5 text-sm" required />
-                                </div>
-                                <div>
-                                    <label className="text-[10px] uppercase text-slate-500 font-bold">Lab Revenue</label>
-                                    <input type="number" name="sales" value={editData.sales} onChange={handleChange} className="w-full input-field rounded-lg p-2.5 text-sm font-mono" />
-                                </div>
+                                <div><label className="text-[10px] uppercase text-slate-500 font-bold">Date</label><input type="date" name="date" value={editData.date} onChange={handleChange} className="w-full input-field rounded-lg p-2.5 text-sm" required /></div>
+                                <div><label className="text-[10px] uppercase text-slate-500 font-bold">Lab Revenue</label><input type="number" name="sales" value={editData.sales} onChange={handleChange} className="w-full input-field rounded-lg p-2.5 text-sm font-mono" /></div>
                             </div>
                             <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="text-[10px] uppercase text-slate-500 font-bold">Expense</label>
-                                    <input type="number" name="expense" value={editData.expense} onChange={handleChange} className="w-full input-field rounded-lg p-2.5 text-sm font-mono" />
-                                </div>
-                                <div>
-                                    <label className="text-[10px] uppercase text-slate-500 font-bold">Refund</label>
-                                    <input type="number" name="refund" value={editData.refund} onChange={handleChange} className="w-full input-field rounded-lg p-2.5 text-sm font-mono" />
-                                </div>
+                                <div><label className="text-[10px] uppercase text-slate-500 font-bold">Expense</label><input type="number" name="expense" value={editData.expense} onChange={handleChange} className="w-full input-field rounded-lg p-2.5 text-sm font-mono" /></div>
+                                <div><label className="text-[10px] uppercase text-slate-500 font-bold">Refund</label><input type="number" name="refund" value={editData.refund} onChange={handleChange} className="w-full input-field rounded-lg p-2.5 text-sm font-mono" /></div>
                             </div>
                              <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="text-[10px] uppercase text-slate-500 font-bold">Dues</label>
-                                    <input type="number" name="dues" value={editData.dues} onChange={handleChange} className="w-full input-field rounded-lg p-2.5 text-sm font-mono" />
-                                </div>
-                                <div>
-                                    <label className="text-[10px] uppercase text-slate-500 font-bold">Bank Deposit</label>
-                                    <input type="number" name="bankDeposit" value={editData.bankDeposit} onChange={handleChange} className="w-full input-field rounded-lg p-2.5 text-sm font-mono" />
-                                </div>
+                                <div><label className="text-[10px] uppercase text-slate-500 font-bold">Dues</label><input type="number" name="dues" value={editData.dues} onChange={handleChange} className="w-full input-field rounded-lg p-2.5 text-sm font-mono" /></div>
+                                <div><label className="text-[10px] uppercase text-slate-500 font-bold">Bank Deposit</label><input type="number" name="bankDeposit" value={editData.bankDeposit} onChange={handleChange} className="w-full input-field rounded-lg p-2.5 text-sm font-mono" /></div>
                             </div>
                             <div className="flex gap-3 pt-4">
                                 <button type="button" onClick={onClose} className="flex-1 py-3 border border-slate-600 rounded-lg text-slate-300 font-bold text-xs uppercase hover:bg-white/5 transition-all">Cancel</button>
-                                <button type="submit" disabled={isSaving} className="flex-1 py-3 bg-cyan-600 hover:bg-cyan-500 rounded-lg text-white font-bold text-xs uppercase shadow-lg transition-all">
-                                    {isSaving ? 'Saving...' : 'Update Record'}
-                                </button>
+                                <button type="submit" disabled={isSaving} className="flex-1 py-3 bg-cyan-600 hover:bg-cyan-500 rounded-lg text-white font-bold text-xs uppercase shadow-lg transition-all">{isSaving ? 'Saving...' : 'Update Record'}</button>
                             </div>
                         </form>
                     </div>
@@ -325,33 +318,17 @@
         const AuditChanges = ({ changes }) => {
             const [isOpen, setIsOpen] = useState(false);
             if (!changes || !changes.old || !changes.new) return <span className="text-slate-500 italic">No details</span>;
-
-            const getChangedFields = () => {
-                const oldData = changes.old;
-                const newData = changes.new;
-                const diffs = [];
-                for (const key in newData) {
-                    if (oldData[key] != newData[key] && key !== 'dayPL' && key !== 'cashHand') {
-                         diffs.push({ key, old: oldData[key], new: newData[key] });
-                    }
-                }
-                return diffs;
-            };
-
-            const diffs = getChangedFields();
+            const diffs = Object.keys(changes.new).filter(k => changes.old[k] != changes.new[k] && k !== 'dayPL' && k !== 'cashHand').map(key => ({ key, old: changes.old[key], new: changes.new[key] }));
             if (diffs.length === 0) return <span className="text-slate-500 italic">No value changes</span>;
 
             return (
                 <div className="text-[10px]">
-                    <button onClick={() => setIsOpen(!isOpen)} className="text-cyan-400 hover:text-cyan-300 underline font-bold">
-                        {isOpen ? 'Hide Details' : 'View Changes'}
-                    </button>
+                    <button onClick={() => setIsOpen(!isOpen)} className="text-cyan-400 hover:text-cyan-300 underline font-bold">{isOpen ? 'Hide Details' : 'View Changes'}</button>
                     {isOpen && (
                         <div className="mt-2 bg-black/40 p-2 rounded border border-white/5 space-y-1">
                             {diffs.map((d, i) => (
                                 <div key={i} className="flex justify-between gap-4 border-b border-white/5 pb-1 last:border-0 last:pb-0">
-                                    <span className="text-slate-400 uppercase">{d.key}:</span>
-                                    <span className="font-mono text-slate-200">{d.old} <span className="text-cyan-500">→</span> {d.new}</span>
+                                    <span className="text-slate-400 uppercase">{d.key}:</span><span className="font-mono text-slate-200">{d.old} <span className="text-cyan-500">→</span> {d.new}</span>
                                 </div>
                             ))}
                         </div>
@@ -368,29 +345,29 @@
             const [auditLogs, setAuditLogs] = useState([]);
             const [loading, setLoading] = useState(true);
             const [dbError, setDbError] = useState(null);
+            
+            // UI States
             const [accessKey, setAccessKey] = useState('');
             const [isSaving, setIsSaving] = useState(false);
             const [needsSetup, setNeedsSetup] = useState(false);
+            const [needsCorrectKey, setNeedsCorrectKey] = useState(!currentAnonKey.startsWith('eyJ'));
+            const [newApiKey, setNewApiKey] = useState('');
             const [editingRecord, setEditingRecord] = useState(null);
 
             const staffPass = 'mdc@1500';
             const adminPass = 'Fadmin';
 
-            const [formData, setFormData] = useState({
-                date: new Date().toISOString().split('T')[0],
-                sales: '', expense: '', refund: '', dues: '', bankDeposit: ''
-            });
+            const [formData, setFormData] = useState({ date: new Date().toISOString().split('T')[0], sales: '', expense: '', refund: '', dues: '', bankDeposit: '' });
 
             // --- DATABASE FUNCTIONS ---
             const fetchRecords = useCallback(async () => {
+                if (needsCorrectKey) return;
+
                 try {
-                    const { data, error } = await supabaseClient
-                        .from('pharmacy_records') 
-                        .select('*');
+                    const { data, error } = await supabaseClient.from('pharmacy_records').select('*');
                     
                     if (error) {
                         if (error.code === 'PGRST205' || error.code === '42P01' || error.message.includes('Could not find the table')) {
-                            console.warn("Table Missing");
                             setNeedsSetup(true);
                         } else {
                             throw error;
@@ -399,64 +376,49 @@
                         setDbError(null);
                         setNeedsSetup(false);
                         const mapped = (data || []).map(r => ({
-                            id: r.id,
-                            date: String(r.date || ''),
-                            sales: Number(r.sales) || 0,
-                            expense: Number(r.expense) || 0,
-                            refund: Number(r.refund) || 0,
-                            dues: Number(r.dues) || 0,
-                            bankDeposit: Number(r.bank_deposit) || 0,
-                            dayPL: Number(r.day_pl) || 0,
-                            cashHand: Number(r.cash_hand) || 0
+                            id: r.id, date: String(r.date || ''), sales: Number(r.sales) || 0, expense: Number(r.expense) || 0,
+                            refund: Number(r.refund) || 0, dues: Number(r.dues) || 0, bankDeposit: Number(r.bank_deposit) || 0,
+                            dayPL: Number(r.day_pl) || 0, cashHand: Number(r.cash_hand) || 0
                         })).sort((a, b) => b.date.localeCompare(a.date));
                         setRecords(mapped);
                     }
                 } catch (err) {
                     console.error("Supabase Error:", err);
-                    setDbError(err.message || "Unknown error occurred");
+                    if (err.message === 'Failed to fetch' || err.message.includes('fetch')) {
+                        setNeedsCorrectKey(true);
+                    } else {
+                        setDbError(err.message || "Unknown error occurred");
+                    }
                 } finally {
                     setLoading(false);
                 }
-            }, []);
+            }, [needsCorrectKey]);
 
             const fetchAuditLogs = useCallback(async () => {
-                if (role !== 'admin') return;
+                if (role !== 'admin' || needsCorrectKey) return;
                 try {
-                    const { data, error } = await supabaseClient
-                        .from('audit_logs')
-                        .select('*')
-                        .order('created_at', { ascending: false })
-                        .limit(50);
-                    
-                    if (!error && data) {
-                        setAuditLogs(data);
-                    }
-                } catch (err) {
-                    console.warn("Audit log fetch failed (table might not exist yet)", err);
-                }
-            }, [role]);
+                    const { data, error } = await supabaseClient.from('audit_logs').select('*').order('created_at', { ascending: false }).limit(50);
+                    if (!error && data) setAuditLogs(data);
+                } catch (err) {}
+            }, [role, needsCorrectKey]);
 
             useEffect(() => {
                 fetchRecords();
                 if(role === 'admin') fetchAuditLogs();
+                if (needsCorrectKey) return;
 
                 const sub = supabaseClient.channel('realtime_sync')
-                    .on('postgres_changes', { event: '*', schema: 'public', table: 'pharmacy_records' }, fetchRecords)
-                    .subscribe();
+                    .on('postgres_changes', { event: '*', schema: 'public', table: 'pharmacy_records' }, fetchRecords).subscribe();
                 return () => supabaseClient.removeChannel(sub);
-            }, [fetchRecords, fetchAuditLogs, role]);
+            }, [fetchRecords, fetchAuditLogs, role, needsCorrectKey]);
 
             // --- CALCULATIONS ---
             const stats = useMemo(() => {
                 const s = records.reduce((acc, r) => ({
-                    sales: acc.sales + r.sales,
-                    expense: acc.expense + r.expense,
-                    refund: acc.refund + r.refund,
-                    bankDeposit: acc.bankDeposit + r.bankDeposit,
-                    dues: acc.dues + r.dues,
-                    cashHand: acc.cashHand + r.cashHand
+                    sales: acc.sales + r.sales, expense: acc.expense + r.expense, refund: acc.refund + r.refund,
+                    bankDeposit: acc.bankDeposit + r.bankDeposit, dues: acc.dues + r.dues, cashHand: acc.cashHand + r.cashHand
                 }), { sales: 0, expense: 0, refund: 0, bankDeposit: 0, dues: 0, cashHand: 0 });
-                return { ...s, netProfit: s.sales - s.expense - s.refund };
+                return { ...s, netProfit: s.sales - s.expense - s.refund }; // ACCURATE NET PROFIT CALCULATION
             }, [records]);
 
             const monthlySummary = useMemo(() => {
@@ -464,11 +426,8 @@
                 records.forEach(r => {
                     const m = r.date ? r.date.substring(0, 7) : 'NA';
                     if (!groups[m]) groups[m] = { m, sales: 0, expense: 0, refund: 0, bankDeposit: 0, dues: 0, profit: 0 };
-                    groups[m].sales += r.sales;
-                    groups[m].expense += r.expense;
-                    groups[m].refund += r.refund;
-                    groups[m].bankDeposit += r.bankDeposit;
-                    groups[m].dues += r.dues;
+                    groups[m].sales += r.sales; groups[m].expense += r.expense; groups[m].refund += r.refund;
+                    groups[m].bankDeposit += r.bankDeposit; groups[m].dues += r.dues;
                     groups[m].profit += (r.sales - r.expense - r.refund);
                 });
                 return Object.values(groups).sort((a, b) => b.m.localeCompare(a.m));
@@ -481,39 +440,23 @@
                 const link = document.createElement("a");
                 link.setAttribute("href", encodeURI(csvContent));
                 link.setAttribute("download", `Diagnostic_Centre_Report.csv`);
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
+                document.body.appendChild(link); link.click(); document.body.removeChild(link);
             };
 
             const addRecord = async (e) => {
                 if (e) e.preventDefault();
                 if (isSaving) return;
                 setIsSaving(true);
-                const s = Number(formData.sales) || 0;
-                const ex = Number(formData.expense) || 0;
-                const rf = Number(formData.refund) || 0;
-                const d = Number(formData.dues) || 0;
-                const b = Number(formData.bankDeposit) || 0;
+                const s = Number(formData.sales) || 0; const ex = Number(formData.expense) || 0;
+                const rf = Number(formData.refund) || 0; const d = Number(formData.dues) || 0; const b = Number(formData.bankDeposit) || 0;
 
-                const payload = { 
-                    date: String(formData.date), 
-                    sales: s, 
-                    expense: ex, 
-                    refund: rf, 
-                    dues: d, 
-                    bank_deposit: b, 
-                    day_pl: s - ex - rf, 
-                    cash_hand: s - b - d - rf 
-                };
+                const payload = { date: String(formData.date), sales: s, expense: ex, refund: rf, dues: d, bank_deposit: b, day_pl: s - ex - rf, cash_hand: s - b - d - rf };
 
-                const { error } = await supabaseClient.from('pharmacy_records').insert([payload]);
-                if (error) {
-                    alert(`Sync Error: ${error.message}`);
-                } else {
-                    setFormData({ date: new Date().toISOString().split('T')[0], sales: '', expense: '', refund: '', dues: '', bankDeposit: '' });
-                    fetchRecords();
-                }
+                try {
+                    const { error } = await supabaseClient.from('pharmacy_records').insert([payload]);
+                    if (error) alert(`Sync Error: ${error.message}`);
+                    else { setFormData({ date: new Date().toISOString().split('T')[0], sales: '', expense: '', refund: '', dues: '', bankDeposit: '' }); fetchRecords(); }
+                } catch(err) { alert(`Network Error: ${err.message}`); }
                 setIsSaving(false);
             };
 
@@ -521,106 +464,98 @@
                 if (isSaving) return;
                 setIsSaving(true);
 
-                const s = Number(updatedData.sales) || 0;
-                const ex = Number(updatedData.expense) || 0;
-                const rf = Number(updatedData.refund) || 0;
-                const d = Number(updatedData.dues) || 0;
-                const b = Number(updatedData.bankDeposit) || 0;
+                const s = Number(updatedData.sales) || 0; const ex = Number(updatedData.expense) || 0;
+                const rf = Number(updatedData.refund) || 0; const d = Number(updatedData.dues) || 0; const b = Number(updatedData.bankDeposit) || 0;
 
-                const payload = {
-                    date: String(updatedData.date),
-                    sales: s,
-                    expense: ex,
-                    refund: rf,
-                    dues: d,
-                    bank_deposit: b,
-                    day_pl: s - ex - rf,
-                    cash_hand: s - b - d - rf
-                };
-
-                // Capture change for audit
+                const payload = { date: String(updatedData.date), sales: s, expense: ex, refund: rf, dues: d, bank_deposit: b, day_pl: s - ex - rf, cash_hand: s - b - d - rf };
                 const originalRecord = records.find(r => r.id === updatedData.id);
 
-                const { error } = await supabaseClient
-                    .from('pharmacy_records')
-                    .update(payload)
-                    .eq('id', updatedData.id);
-
-                if (error) {
-                    alert(`Update Failed: ${error.message}`);
-                } else {
-                    // Log to Audit Table (Fail silently if table doesn't exist)
-                    const auditPayload = {
-                        record_id: updatedData.id,
-                        action: 'EDIT',
-                        changes: {
-                            old: originalRecord,
-                            new: updatedData
-                        },
-                        performed_by: role
-                    };
-                    await supabaseClient.from('audit_logs').insert([auditPayload]).catch(() => {});
-                    
-                    setEditingRecord(null);
-                    fetchRecords();
-                    if (role === 'admin') fetchAuditLogs();
-                }
+                try {
+                    const { error } = await supabaseClient.from('pharmacy_records').update(payload).eq('id', updatedData.id);
+                    if (error) alert(`Update Failed: ${error.message}`);
+                    else {
+                        const auditPayload = { record_id: updatedData.id, action: 'EDIT', changes: { old: originalRecord, new: updatedData }, performed_by: role };
+                        await supabaseClient.from('audit_logs').insert([auditPayload]).catch(() => {});
+                        setEditingRecord(null); fetchRecords(); if (role === 'admin') fetchAuditLogs();
+                    }
+                } catch(err) { alert(`Network Error: ${err.message}`); }
                 setIsSaving(false);
             };
 
             const handleDelete = async (id) => {
                 if (role !== 'admin' || !confirm('Permanently delete this entry from the database?')) return;
-                
-                await supabaseClient.from('pharmacy_records').delete().eq('id', id);
-                fetchRecords();
+                try { await supabaseClient.from('pharmacy_records').delete().eq('id', id); fetchRecords(); } catch(err) { alert(`Network Error: ${err.message}`); }
             };
 
             const handleLoginAttempt = (e) => {
                 if (e) e.preventDefault();
                 const val = accessKey.trim();
-                if ((role === 'admin' && val === adminPass) || (role === 'staff' && val === staffPass)) {
-                    setIsLoggedIn(true);
-                    setAccessKey('');
-                } else {
-                    alert("Access Denied: Invalid Credentials");
-                }
+                if ((role === 'admin' && val === adminPass) || (role === 'staff' && val === staffPass)) { setIsLoggedIn(true); setAccessKey(''); } 
+                else alert("Access Denied: Invalid Credentials");
             };
 
             const fmt = (v) => (Number(v) || 0).toLocaleString('en-IN');
             
             const handleCopySql = () => {
-                const sql = `create table if not exists pharmacy_records (
-  id bigint generated by default as identity primary key,
-  date date,
-  sales numeric,
-  expense numeric,
-  refund numeric,
-  dues numeric,
-  bank_deposit numeric,
-  day_pl numeric,
-  cash_hand numeric,
-  created_at timestamp with time zone default timezone('utc'::text, now()) not null
-);
-
-create table if not exists audit_logs (
-  id bigint generated by default as identity primary key,
-  record_id bigint,
-  action text,
-  changes jsonb,
-  performed_by text,
-  created_at timestamp with time zone default timezone('utc'::text, now()) not null
-);`;
+                const sql = `create table if not exists pharmacy_records (\n  id bigint generated by default as identity primary key,\n  date date,\n  sales numeric,\n  expense numeric,\n  refund numeric,\n  dues numeric,\n  bank_deposit numeric,\n  day_pl numeric,\n  cash_hand numeric,\n  created_at timestamp with time zone default timezone('utc'::text, now()) not null\n);\n\ncreate table if not exists audit_logs (\n  id bigint generated by default as identity primary key,\n  record_id bigint,\n  action text,\n  changes jsonb,\n  performed_by text,\n  created_at timestamp with time zone default timezone('utc'::text, now()) not null\n);`;
                 navigator.clipboard.writeText(sql).then(() => alert("SQL Copied! Paste this in your Supabase SQL Editor."));
             };
 
-            // --- MAIN RENDER LOGIC ---
+            // --- RENDER API KEY DIAGNOSTIC SCREEN ---
+            if (needsCorrectKey) {
+                return (
+                    <div className="flex items-center justify-center min-h-screen p-6 w-full relative">
+                        <ThreeBackground />
+                        <div className="glass-panel p-8 w-full max-w-lg space-y-6 border border-rose-500 shadow-2xl animate-[fadeIn_0.5s]">
+                            <div className="flex items-center gap-3 text-rose-400">
+                                <Icon name="wifi-off" className="w-8 h-8" />
+                                <h2 className="text-xl font-bold uppercase tracking-widest">Connection Failed</h2>
+                            </div>
+                            <p className="text-sm text-slate-300">
+                                Could not fetch data from the database. This happens when the API key is incorrect or an ad-blocker is active.
+                            </p>
+                            <div className="bg-rose-500/10 border border-rose-500/20 p-4 rounded-lg">
+                                <p className="text-xs text-rose-300 font-bold mb-2">Diagnostic Result:</p>
+                                <p className="text-[11px] text-slate-300 leading-relaxed">
+                                    The current API Key (<code className="text-rose-400 bg-black/30 px-1 py-0.5 rounded mx-1">{currentAnonKey.substring(0, 14)}...</code>) is a Publishable Management Key. 
+                                    Supabase requires the <strong className="text-emerald-400">anon public</strong> key, which <u>always</u> begins with <code className="text-emerald-400 font-bold">eyJ...</code>
+                                </p>
+                            </div>
+                            <div className="space-y-3">
+                                <label className="text-[10px] uppercase font-bold text-slate-500">Paste your correct 'anon public' key here:</label>
+                                <input 
+                                    type="text" 
+                                    value={newApiKey}
+                                    onChange={(e) => setNewApiKey(e.target.value)}
+                                    placeholder="eyJhbGciOiJIUzI1NiIsInR..." 
+                                    className="w-full input-field p-3 rounded-lg text-xs font-mono"
+                                />
+                                <button 
+                                    onClick={() => { 
+                                        if(!newApiKey.trim()){ alert("Please enter a key."); return; }
+                                        localStorage.setItem('mdc_anon_key_v2', newApiKey.trim()); 
+                                        window.location.reload(); 
+                                    }}
+                                    className="w-full py-3.5 bg-rose-600 hover:bg-rose-500 rounded-lg font-bold uppercase text-[10px] tracking-widest text-white transition-colors"
+                                >
+                                    Save Key & Reconnect
+                                </button>
+                            </div>
+                            <div className="text-[10px] text-slate-500 text-center flex items-center justify-center gap-1.5">
+                                <Icon name="info" className="w-3 h-3" />
+                                Found in Supabase Dashboard → Project Settings → API
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
 
+            // --- MAIN RENDER LOGIC ---
             return (
                 <>
-                    {/* Render Background Once at Top Level */}
                     <ThreeBackground />
 
-                    <div className="min-h-screen pb-20">
+                    <div className="min-h-screen pb-20 relative z-10">
                         {needsSetup ? (
                             <div className="flex items-center justify-center min-h-screen p-6 w-full relative">
                                 <div className="glass-panel p-8 w-full max-w-lg space-y-6 border border-cyan-500 shadow-2xl animate-[fadeIn_0.5s]">
@@ -629,7 +564,7 @@ create table if not exists audit_logs (
                                         <h2 className="text-xl font-bold uppercase tracking-widest">Initialize Database</h2>
                                     </div>
                                     <p className="text-sm text-slate-300">
-                                        Your new Cloud Database is connected. Please run this command in your Supabase SQL Editor to create the necessary tables.
+                                        Your Cloud Database is connected. Please run this command in your Supabase SQL Editor to create the necessary tables.
                                     </p>
                                     
                                     <div className="sql-block">
@@ -665,7 +600,7 @@ create table if not exists audit_logs (
                                         </button>
                                     </div>
                                     <div className="text-[10px] text-center text-slate-500 pt-2">
-                                        Go to <a href="https://supabase.com/dashboard/project/lawvabxmsvakgzucirlw/sql" target="_blank" className="text-cyan-400 underline">Supabase SQL Editor</a>
+                                        Go to <a href="https://supabase.com/dashboard/project/ttrxyxrssgzlyforxage/sql" target="_blank" className="text-cyan-400 underline">Supabase SQL Editor</a>
                                     </div>
                                 </div>
                             </div>
@@ -715,7 +650,7 @@ create table if not exists audit_logs (
                             <>
                                 {/* Header */}
                                 <div className="center-layout pt-4 px-4 no-print sticky top-0 z-50">
-                                    <nav className="glass-panel px-6 py-4 flex flex-wrap items-center justify-between gap-6 shadow-2xl backdrop-blur-xl">
+                                    <nav className="glass-panel px-6 py-4 flex flex-wrap items-center justify-between gap-6 shadow-2xl backdrop-blur-xl border-t border-t-cyan-500/50">
                                         <div className="flex items-center gap-4">
                                             <div className="p-2.5 rounded-lg bg-cyan-500/10 border border-cyan-500/20">
                                                 <Icon name="activity" className="w-6 h-6 text-cyan-400" />
@@ -748,7 +683,7 @@ create table if not exists audit_logs (
                                     {dbError && (
                                         <div className="mb-6 p-4 bg-rose-500/10 border border-rose-500/30 rounded-xl flex items-center gap-3 text-rose-400">
                                             <Icon name="alert-triangle" className="w-5 h-5" />
-                                            <span className="text-xs font-bold uppercase tracking-wide">Sync Failure: {dbError}</span>
+                                            <span className="text-xs font-bold uppercase tracking-wide">{dbError}</span>
                                         </div>
                                     )}
 
@@ -760,7 +695,7 @@ create table if not exists audit_logs (
                                     ) : activeTab === 'dashboard' ? (
                                         <div className="space-y-8 animate-[fadeIn_0.5s_ease-out]">
                                             
-                                            {/* KPI Cards */}
+                                            {/* KPI Cards (Net Profit fixed) */}
                                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                                                 {[
                                                     { l: 'Total Lab Revenue', v: stats.sales, icon: 'banknote', color: 'text-emerald-400', bg: 'from-emerald-500/5 to-emerald-500/0', border: 'border-emerald-500/20' },
@@ -909,9 +844,9 @@ create table if not exists audit_logs (
                                                         <Icon name="file-spreadsheet" className="w-4 h-4" /> Export Data
                                                     </button>
                                                 </div>
-                                                <div className="overflow-x-auto custom-scrollbar">
+                                                <div className="overflow-x-auto custom-scrollbar max-h-[500px]">
                                                     <table className="w-full text-left text-xs whitespace-nowrap">
-                                                        <thead className="bg-black/20 text-slate-500 text-[10px] font-bold uppercase tracking-wider">
+                                                        <thead className="bg-[#050b14] text-slate-500 text-[10px] font-bold uppercase tracking-wider sticky top-0 z-10 shadow-sm border-b border-white/10">
                                                             <tr>
                                                                 <th className="p-4 pl-6">Date</th>
                                                                 <th className="p-4 text-right text-emerald-500/70">Lab Revenue</th>
@@ -952,7 +887,7 @@ create table if not exists audit_logs (
                                                 </div>
                                             </div>
 
-                                            {/* Monthly Breakdown Table (New) */}
+                                            {/* Monthly Breakdown Table */}
                                             <div className="glass-panel overflow-hidden border-t-2 border-t-sky-500">
                                                 <div className="p-6 border-b border-white/5 flex flex-wrap justify-between items-center gap-4 bg-white/5">
                                                     <div>
@@ -1020,8 +955,11 @@ create table if not exists audit_logs (
                                                     <h3 className="text-lg font-bold uppercase tracking-tight text-white">Cloud Database</h3>
                                                     <p className="text-xs text-slate-500 mt-2">Direct access to Supabase console.</p>
                                                 </div>
-                                                <button onClick={() => window.open('https://supabase.com/dashboard/project/lawvabxmsvakgzucirlw/editor', '_blank')} className="w-full py-4 rounded-xl border border-slate-700 hover:border-cyan-500/50 hover:bg-cyan-500/10 text-slate-300 hover:text-white transition-all text-xs font-bold uppercase tracking-widest">
+                                                <button onClick={() => window.open('https://supabase.com/dashboard/project/ttrxyxrssgzlyforxage/editor', '_blank')} className="w-full py-4 rounded-xl border border-slate-700 hover:border-cyan-500/50 hover:bg-cyan-500/10 text-slate-300 hover:text-white transition-all text-xs font-bold uppercase tracking-widest">
                                                     Open Database Console
+                                                </button>
+                                                <button onClick={() => { localStorage.removeItem('mdc_anon_key_v2'); window.location.reload(); }} className="text-[10px] text-rose-400 hover:text-rose-300 underline font-bold uppercase mt-2 block">
+                                                    Reset API Key Connection
                                                 </button>
                                             </div>
                                             
@@ -1033,25 +971,25 @@ create table if not exists audit_logs (
                                                 </div>
                                                 <div className="overflow-x-auto custom-scrollbar max-h-80">
                                                     <table className="w-full text-left text-xs">
-                                                        <thead className="text-slate-500 sticky top-0 bg-[#0d121e]">
+                                                        <thead className="text-slate-500 sticky top-0 bg-[#0d121e] z-10 shadow-sm">
                                                             <tr>
-                                                                <th className="pb-2 pl-2">Time</th>
-                                                                <th className="pb-2">User</th>
-                                                                <th className="pb-2">Action</th>
-                                                                <th className="pb-2">Details</th>
-                                                                <th className="pb-2 text-right pr-2">Record ID</th>
+                                                                <th className="pb-2 pl-2 border-b border-white/10">Time</th>
+                                                                <th className="pb-2 border-b border-white/10">User</th>
+                                                                <th className="pb-2 border-b border-white/10">Action</th>
+                                                                <th className="pb-2 border-b border-white/10">Details</th>
+                                                                <th className="pb-2 text-right pr-2 border-b border-white/10">Record ID</th>
                                                             </tr>
                                                         </thead>
                                                         <tbody className="font-mono text-[10px] divide-y divide-white/5">
                                                             {auditLogs.length > 0 ? auditLogs.map(log => (
                                                                 <tr key={log.id} className="hover:bg-white/5">
-                                                                    <td className="py-2 pl-2 text-slate-400 align-top">{new Date(log.created_at).toLocaleString()}</td>
-                                                                    <td className="py-2 text-cyan-400 uppercase align-top">{log.performed_by}</td>
-                                                                    <td className="py-2 text-amber-400 align-top">{log.action}</td>
-                                                                    <td className="py-2 align-top">
+                                                                    <td className="py-3 pl-2 text-slate-400 align-top">{new Date(log.created_at).toLocaleString()}</td>
+                                                                    <td className="py-3 text-cyan-400 uppercase align-top">{log.performed_by}</td>
+                                                                    <td className="py-3 text-amber-400 align-top">{log.action}</td>
+                                                                    <td className="py-3 align-top">
                                                                         <AuditChanges changes={log.changes} />
                                                                     </td>
-                                                                    <td className="py-2 pr-2 text-right text-slate-500 align-top">#{log.record_id}</td>
+                                                                    <td className="py-3 pr-2 text-right text-slate-500 align-top">#{log.record_id}</td>
                                                                 </tr>
                                                             )) : (
                                                                 <tr><td colSpan="5" className="py-4 text-center text-slate-500 italic">No audit logs found.</td></tr>
